@@ -100,25 +100,52 @@ Console.WriteLine($"{output[0]}, {output[1]}, {output[2]}");
 
 // Let's create a Vector class to make the code more readable
 // Let's use the new Vector class to calculate the output
-var vectorInputs = new Vector(inputs);
+var vectorInputs = new Vector(inputs.ToArray());
 var vectorWeights = new List<Vector>() {
-    new Vector(weights[0]),
-    new Vector(weights[1]),
-    new Vector(weights[2])
+    new Vector(weights[0].ToArray()),
+    new Vector(weights[1].ToArray()),
+    new Vector(weights[2].ToArray())
 };
-var vectorBiases = new Vector(biases);
+var vectorBiases = new Vector(biases.ToArray());
 
 var vectorOutput = Vector.Dot(vectorWeights, vectorInputs) + vectorBiases;
 
 Console.WriteLine("\n--------------- Output: ---------------\n");
 Console.WriteLine($"{vectorOutput.Values[0]}, {vectorOutput.Values[1]}, {vectorOutput.Values[2]}");
 
-// Lets convert the input to be a batch of inputs
-var batch = new List<List<float>>() {
-    new List<float>() { 1, 2, 3, 2.5F },
-    new List<float>() { 2.0f, 5.0f, -1.0f, 2.0f },
-    new List<float>() { -1.5f, 2.7f, 3.3f, -0.8f }
+// Lets convert the input to be a batch of inputs.
+// This results in a list of vectors or a matrix
+var batch = new Vector[] {
+    new Vector(new float[] { 1, 2, 3, 2.5f }),
+    new Vector(new float[] { 2.0f, 5.0f, -1.0f, 2.0f }),
+    new Vector(new float[] { -1.5f, 2.7f, 3.3f, -0.8f })
 };
+
+// Should we just use multidimensional arrays?
+// var batch2 = new float[,] {
+//     { 1, 2, 3, 2.5f },
+//     { 2.0f, 5.0f, -1.0f, 2.0f },
+//     { -1.5f, 2.7f, 3.3f, -0.8f }
+// };
+
+// Lets define a Matrix Dot product function
+Vector[,] MatrixDot(Vector[,] a, Vector[,] b)
+{
+  var output = new Vector[a.GetLength(0), b.GetLength(1)];
+  for (int i = 0; i < a.GetLength(0); i++)
+  {
+    for (int j = 0; j < b.GetLength(1); j++)
+    {
+      var row = new Vector();
+      for (int k = 0; k < a.GetLength(1); k++)
+      {
+        row[k] = Vector.Dot(a[i, k], b[k, j]);
+      }
+      output[i, j] = row;
+    }
+  }
+  return output;
+}
 
 Console.WriteLine("\n-------------------- END -------------------\n");
 
@@ -128,11 +155,26 @@ Console.WriteLine("\n-------------------- END -------------------\n");
 /// </summary>
 public class Vector
 {
-  public List<float> Values { get; set; }
+  public float[] Values { get; set; }
+  public int Count { get { return Values.Length; } }
 
-  public Vector(List<float> values)
+  public Vector(float[] values)
   {
     Values = values;
+  }
+
+  public Vector()
+  {
+    Values = Array.Empty<float>();
+  }
+
+  /// <summary>
+  /// Indexer to make it easy to access the values in the vector
+  /// </summary>
+  public float this[int i]
+  {
+    get { return Values[i]; }
+    set { Values[i] = value; }
   }
 
   /// <summary>
@@ -141,10 +183,10 @@ public class Vector
   /// </summary>
   public static Vector operator +(Vector a, Vector b)
   {
-    var output = new List<float>();
-    for (int i = 0; i < a.Values.Count; i++)
+    var output = new float[a.Count];
+    for (int i = 0; i < a.Count; i++)
     {
-      output.Add(a.Values[i] + b.Values[i]);
+      output[i] = a[i] + b[i];
     }
     return new Vector(output);
   }
@@ -155,10 +197,10 @@ public class Vector
   /// </summary>
   public static Vector operator -(Vector a, Vector b)
   {
-    var output = new List<float>();
-    for (int i = 0; i < a.Values.Count; i++)
+    var output = new float[a.Count];
+    for (int i = 0; i < a.Count; i++)
     {
-      output.Add(a.Values[i] - b.Values[i]);
+      output[i] = a.Values[i] - b.Values[i];
     }
     return new Vector(output);
   }
@@ -169,35 +211,12 @@ public class Vector
   /// </summary>
   public static Vector operator *(Vector a, float b)
   {
-    var output = new List<float>();
-    for (int i = 0; i < a.Values.Count; i++)
-    {
-      output.Add(a.Values[i] * b);
-    }
-    return new Vector(output);
-  }
-
-  /// <summary>
-  /// Take the matrix product of two lists of vectors
-  /// By taking the dot products of the rows of the first list
-  /// with the columns of the second list
-  /// </summary>
-  public static List<Vector> MatrixDot(List<Vector> a, List<Vector> b)
-  {
-    var output = new List<Vector>();
+    var output = new float[a.Count];
     for (int i = 0; i < a.Count; i++)
     {
-      var row = new List<float>();
-      var product = 0.0f;
-      for (int j = 0; j < b.Count; j++)
-      {
-        // Make a list of the values in the column
-        product += a[i].Values[j] * b[j].Values[i];
-        //... Might need 3 loops here to make it work
-      }
-      output.Add(new Vector(row));
+      output[i] = a.Values[i] * b;
     }
-    return output;
+    return new Vector(output);
   }
 
   /// <summary>
@@ -206,10 +225,10 @@ public class Vector
   /// </summary>
   public static Vector Dot(List<Vector> a, Vector b)
   {
-    var output = new List<float>();
+    var output = new float[a.Count];
     for (int i = 0; i < a.Count; i++)
     {
-      output.Add(Dot(a[i], b));
+      output[i] = Dot(a[i], b);
     }
     return new Vector(output);
   }
@@ -220,7 +239,7 @@ public class Vector
   public static float Dot(Vector a, Vector b)
   {
     var output = 0.0f;
-    for (int i = 0; i < a.Values.Count; i++)
+    for (int i = 0; i < a.Count; i++)
     {
       output += a.Values[i] * b.Values[i];
     }
