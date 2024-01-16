@@ -10,6 +10,7 @@ Console.WriteLine("\n --------------- Hello, World! --------------- \n");
 var inputs = new List<float>() { 1, 2, 3, 2.5F };
 
 // Weights are a a list of numbers (one set of weights per neuron)
+// Each set is a branch from the neuron to each input
 var weights = new List<List<float>>() {
     new List<float>() { 0.2f, 0.8f, -0.5f, 1.0f },
     new List<float>() { 0.5f, -0.91f, 0.26f, -0.5f },
@@ -115,10 +116,19 @@ Console.WriteLine($"{vectorOutput.Values[0]}, {vectorOutput.Values[1]}, {vectorO
 
 // Lets convert the input to be a batch of inputs.
 // This results in a list of vectors or a matrix
+// Shape: 3, 4
 var batch = new Vector[] {
     new Vector(new float[] { 1, 2, 3, 2.5f }),
     new Vector(new float[] { 2.0f, 5.0f, -1.0f, 2.0f }),
     new Vector(new float[] { -1.5f, 2.7f, 3.3f, -0.8f })
+};
+
+// Shape: 4, 4
+var vectorWeights2 = new Vector[] {
+    new Vector(new float[] { 0.2f,  0.8f, -0.5f, 1.0f }),
+    new Vector(new float[] { 0.5f, -0.91f, 0.26f, -0.5f }),
+    new Vector(new float[] { -0.26f, -0.27f, 0.17f, 0.87f }),
+    new Vector(new float[] { -0.26f, -0.27f, 0.17f, 0.87f })
 };
 
 // Should we just use multidimensional arrays?
@@ -129,23 +139,48 @@ var batch = new Vector[] {
 // };
 
 // Lets define a Matrix Dot product function
-Vector[,] MatrixDot(Vector[,] a, Vector[,] b)
+// Result of (3, 4) dot (4, 4) is (3, 4)
+Vector[] MatrixDot(Vector[] batch, Vector[] weights)
 {
-  var output = new Vector[a.GetLength(0), b.GetLength(1)];
-  for (int i = 0; i < a.GetLength(0); i++)
+  var output = new Vector[batch.Length];
+
+  for (int outR = 0; outR < batch.Length; outR++)
   {
-    for (int j = 0; j < b.GetLength(1); j++)
+    // Check if length of row is same as column length
+    if (batch[outR].Length != weights.Length)
     {
-      var row = new Vector();
-      for (int k = 0; k < a.GetLength(1); k++)
-      {
-        row[k] = Vector.Dot(a[i, k], b[k, j]);
-      }
-      output[i, j] = row;
+      throw new Exception("Shape error: The number of columns in the first matrix must match the number of rows in the second matrix");
     }
+
+    // create a new array of floats of size equal to the number of columns in the second matrix
+    var row = new float[weights[0].Length];
+
+    // iterate through the rows of the second matrix (weights)
+    for (int wR = 0; wR < weights.Length; wR++)
+    {
+      // iterate through the columns of the second matrix (weights)
+      for (int wC = 0; wC < weights[wR].Length; wC++)
+      {
+        // multiply the value in the row of the first matrix (batch) by the value in the column of the second matrix (weights)
+        row[wC] += batch[outR][wR] * weights[wR][wC];
+      }
+    }
+
+    // add the row to the output
+    output[outR] = new Vector(row);
   }
+
   return output;
 }
+
+var output2 = MatrixDot(batch, vectorWeights2);
+
+Console.WriteLine("\n--------------- Output: ---------------\n");
+foreach (var item in output2)
+{
+  Console.WriteLine($"{item.Values[0]}, {item.Values[1]}, {item.Values[2]}, {item.Values[3]}");
+}
+
 
 Console.WriteLine("\n-------------------- END -------------------\n");
 
@@ -157,6 +192,10 @@ public class Vector
 {
   public float[] Values { get; set; }
   public int Count { get { return Values.Length; } }
+  /// <summary>
+  /// Length is the same as Count. It's just here to make the code more readable
+  /// </summary>
+  public int Length { get { return Values.Length; } }
 
   public Vector(float[] values)
   {
